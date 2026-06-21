@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家庭点菜系统</title>
+<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --bg: #F5EDE0;
+    --card-bg: #FFFDF8;
+    --wood: #8B7355;
+    --wood-dark: #5C4A32;
+    --terracotta: #C67B5C;
+    --olive: #6B8E4E;
+    --cream: #FFF8E7;
+    --gold: #D4A843;
+    --gold-glow: rgba(212,168,67,0.5);
+    --text-brown: #4A3728;
+    --shadow: 0 4px 12px rgba(74,55,40,0.18), 0 1px 3px rgba(74,55,40,0.1);
+    --shadow-hover: 0 8px 24px rgba(74,55,40,0.25), 0 2px 6px rgba(74,55,40,0.12);
+  }
+
+  body {
+    font-family: 'Noto Serif SC', 'Songti SC', serif;
+    background: var(--bg);
+    color: var(--text-brown);
+    min-height: 100vh;
+    padding-bottom: 80px;
+    background-image:
+      repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(139,115,85,0.04) 49px, rgba(139,115,85,0.04) 50px),
+      repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(139,115,85,0.03) 49px, rgba(139,115,85,0.03) 50px),
+      radial-gradient(ellipse at 20% 50%, rgba(198,123,92,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(107,142,78,0.06) 0%, transparent 50%);
+  }
+
+  .header {
+    text-align: center;
+    padding: 28px 20px 18px;
+    background: linear-gradient(180deg, rgba(255,248,231,0.9) 0%, rgba(245,237,224,0) 100%);
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--wood-dark);
+    text-shadow: 1px 1px 0 rgba(255,248,231,0.8);
+    letter-spacing: 4px;
+  }
+  .header p {
+    font-size: 14px;
+    color: var(--wood);
+    margin-top: 6px;
+    letter-spacing: 2px;
+  }
+
+  /* Category nav tabs */
+  .cat-nav {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: rgba(245,237,224,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(139,115,85,0.1);
+    box-shadow: 0 2px 8px rgba(74,55,40,0.06);
+  }
+  .cat-nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    border-radius: 20px;
+    background: var(--card-bg);
+    color: var(--wood);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Noto Serif SC', serif;
+    text-decoration: none;
+    border: 1.5px solid rgba(139,115,85,0.15);
+    box-shadow: 0 1px 4px rgba(74,55,40,0.08);
+    transition: all 0.2s;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .cat-nav a:hover {
+    background: var(--cream);
+    border-color: var(--gold);
+    color: var(--wood-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(212,168,67,0.2);
+  }
+  .cat-nav a.active {
+    background: linear-gradient(135deg, var(--gold), #E8C04A);
+    color: #4A3728;
+    border-color: var(--gold);
+    box-shadow: 0 2px 10px rgba(212,168,67,0.35);
+  }
+  .cat-nav a .cat-emoji {
+    font-size: 16px;
+  }
+
+  .category-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px 12px;
+  }
+  .category-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 24px 0 14px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--wood-dark);
+  }
+  .category-title::before,
+  .category-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--wood), transparent);
+    opacity: 0.3;
+  }
+  .category-title .icon {
+    font-size: 20px;
+  }
+
+  .dish-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 1024px) {
+    .dish-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .dish-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .dish-grid { grid-template-columns: 1fr; gap: 12px; }
+    .cat-nav { gap: 6px; padding: 8px 10px; overflow-x: auto; justify-content: flex-start; -webkit-overflow-scrolling: touch; }
+    .cat-nav a { padding: 7px 14px; font-size: 13px; flex-shrink: 0; }
+  }
+
+  .dish-card {
+    position: relative;
+    background: var(--card-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(.4,0,.2,1), box-shadow 0.25s ease;
+    border: 1px solid rgba(139,115,85,0.1);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dish-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 40%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 12px 12px 0 0;
+  }
+  .dish-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+  }
+  .dish-card.selected {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--gold);
+  }
+
+  .dish-card .img-wrap {
+    width: 100%;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    position: relative;
+  }
+  .dish-card .img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+  }
+  .dish-card:hover .img-wrap img {
+    transform: scale(1.05);
+  }
+
+  .dish-card .dish-name {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    padding: 8px 10px 10px;
+    background: linear-gradient(0deg, rgba(40,26,13,0.82) 0%, rgba(40,26,13,0.5) 60%, transparent 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    letter-spacing: 1px;
+    z-index: 3;
+  }
+
+  .dish-card .check-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F0D060, var(--gold), #B8922E);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px var(--gold-glow), 0 0 12px var(--gold-glow);
+    z-index: 5;
+    opacity: 0;
+    transform: scale(0.3);
+    transition: opacity 0.25s, transform 0.3s cubic-bezier(.4,0,.2,1);
+    border: 2px solid rgba(255,255,255,0.4);
+  }
+  .dish-card.selected .check-badge {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 64px;
+    background: linear-gradient(180deg, rgba(92,74,50,0.95) 0%, rgba(74,55,40,0.98) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    box-shadow: 0 -2px 16px rgba(74,55,40,0.3);
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .bottom-bar .selected-count {
+    color: var(--cream);
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  .bottom-bar .selected-count span {
+    color: var(--gold);
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 2px;
+  }
+  .bottom-bar .generate-btn {
+    padding: 10px 28px;
+    background: linear-gradient(135deg, var(--gold), #E8C04A, var(--gold));
+    color: var(--wood-dark);
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Serif SC', serif;
+    cursor: pointer;
+    letter-spacing: 2px;
+    box-shadow: 0 2px 8px rgba(212,168,67,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .bottom-bar .generate-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(212,168,67,0.5);
+  }
+  .bottom-bar .generate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .bottom-bar .clear-btn {
+    padding: 8px 18px;
+    background: transparent;
+    color: var(--cream);
+    border: 1.5px solid rgba(255,248,231,0.4);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Noto Serif SC', serif;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .bottom-bar .clear-btn:hover {
+    border-color: rgba(255,248,231,0.7);
+    background: rgba(255,248,231,0.1);
+  }
+  .bottom-bar .clear-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(40,26,13,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.show {
+    display: flex;
+  }
+  .modal {
+    background: var(--cream);
+    border-radius: 16px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 16px 48px rgba(40,26,13,0.4);
+    animation: modalIn 0.3s ease;
+  }
+  @keyframes modalIn {
+    from { transform: translateY(30px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid rgba(139,115,85,0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h2 {
+    font-size: 20px;
+    color: var(--wood-dark);
+  }
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(139,115,85,0.1);
+    color: var(--wood);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .modal-close:hover { background: rgba(139,115,85,0.2); }
+  .modal-body {
+    overflow-y: auto;
+    padding: 16px 24px;
+    flex: 1;
+  }
+  .modal-dish-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px dashed rgba(139,115,85,0.12);
+  }
+  .modal-dish-item:last-child { border-bottom: none; }
+  .modal-dish-item img {
+    width: 64px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .modal-dish-item .info {
+    flex: 1;
+  }
+  .modal-dish-item .info .name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-brown);
+  }
+  .modal-dish-item .info .cat {
+    font-size: 12px;
+    color: var(--wood);
+    margin-top: 2px;
+  }
+  .modal-dish-item .order {
+    font-size: 14px;
+    color: var(--terracotta);
+    font-weight: 600;
+    min-width: 30px;
+    text-align: center;
+  }
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(139,115,85,0.15);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+  .modal-footer button {
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-download {
+    background: linear-gradient(135deg, var(--olive), #5A7E3E);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(107,142,78,0.3);
+  }
+  .btn-download:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(107,142,78,0.4);
+  }
+  .btn-cancel {
+    background: rgba(139,115,85,0.1);
+    color: var(--wood);
+  }
+  .btn-cancel:hover { background: rgba(139,115,85,0.18); }
+
+  .empty-hint {
+    text-align: center;
+    padding: 30px;
+    color: var(--wood);
+    font-size: 15px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(139,115,85,0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(139,115,85,0.35); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏠 家庭点菜</h1>
+  <p>今天想吃什么？点选你喜欢的菜</p>
+</div>
+
+<div class="cat-nav" id="catNav">
+  <a onclick="scrollToCat('荤菜')" id="nav-荤菜"><span class="cat-emoji">🥩</span>荤菜</a>
+  <a onclick="scrollToCat('素菜')" id="nav-素菜"><span class="cat-emoji">🥬</span>素菜</a>
+  <a onclick="scrollToCat('汤菜')" id="nav-汤菜"><span class="cat-emoji">🍲</span>汤菜</a>
+  <a onclick="scrollToCat('主食')" id="nav-主食"><span class="cat-emoji">🍚</span>主食</a>
+</div>
+
+<div id="app"></div>
+
+<div class="bottom-bar">
+  <div class="selected-count">已选 <span id="count">0</span> 道菜</div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button class="clear-btn" id="clearBtn" disabled onclick="clearAll()">清空选择</button>
+    <button class="generate-btn" id="genBtn" disabled onclick="showModal()">生成今日菜单</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📋 今日菜单</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">关闭</button>
+      <button class="btn-download" onclick="downloadWord()">📥 下载 Word 文档</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const dishes = [
+  // ===== 荤菜 =====
+  {id:1, name:"糖醋排骨", cat:"荤菜", img:"https://s.coze.cn/image/WKzTmQRH9NE/"},
+  {id:2, name:"土豆红烧排骨", cat:"荤菜", img:"https://s.coze.cn/image/Ife1EjjkKjE/"},
+  {id:3, name:"绍兴梅干菜红烧排骨", cat:"荤菜", img:"https://s.coze.cn/image/NdnLQ3nh26I/"},
+  {id:4, name:"粉蒸排骨", cat:"荤菜", img:"https://s.coze.cn/image/S47rV-8D4OQ/"},
+  {id:5, name:"甜椒炒肉丝", cat:"荤菜", img:"https://s.coze.cn/image/kQiK3Mq2e0g/"},
+  {id:6, name:"青椒炒肉丝", cat:"荤菜", img:"https://s.coze.cn/image/1Nq7hET7ev0/"},
+  {id:7, name:"莴笋木耳炒肉丝", cat:"荤菜", img:"https://s.coze.cn/image/oRZcUeS4xkQ/"},
+  {id:8, name:"芹菜炒牛肉丝", cat:"荤菜", img:"https://s.coze.cn/image/o-bFlr9SE98/"},
+  {id:9, name:"红烧牛肉", cat:"荤菜", img:"https://s.coze.cn/image/cVYhM3JaeRY/"},
+  {id:10, name:"红烧肉", cat:"荤菜", img:"https://s.coze.cn/image/gfsVl2728YE/"},
+  {id:11, name:"番茄炖牛腩", cat:"荤菜", img:"https://s.coze.cn/image/JZHIBjE6Bh8/"},
+  {id:12, name:"水煮藤椒麻辣花鲢鱼", cat:"荤菜", img:"https://s.coze.cn/image/BhcV7nabArU/"},
+  {id:13, name:"红烧鲫鱼", cat:"荤菜", img:"https://s.coze.cn/image/oAKuVs4Qnbg/"},
+  {id:14, name:"鲫鱼豆腐汤", cat:"荤菜", img:"https://s.coze.cn/image/TJVUIFu6AEU/"},
+  {id:15, name:"白果炖鸡", cat:"荤菜", img:"https://s.coze.cn/image/Mblq6eYs88g/"},
+  {id:16, name:"红烧鸡公", cat:"荤菜", img:"https://s.coze.cn/image/KRmY0m-iDX4/"},
+  {id:17, name:"清炖鸡", cat:"荤菜", img:"https://s.coze.cn/image/uPZnAoVm4dM/"},
+  {id:18, name:"小鸡炖香菇", cat:"荤菜", img:"https://s.coze.cn/image/G1RZXRAzHao/"},
+  {id:19, name:"炒鸡杂", cat:"荤菜", img:"https://s.coze.cn/image/At9j0shELQE/"},
+  {id:20, name:"肥肠烧鸡", cat:"荤菜", img:"https://s.coze.cn/image/CtDOE8iqkTo/"},
+  {id:21, name:"凉拌兔丁", cat:"荤菜", img:"https://s.coze.cn/image/bmn2yplQbJQ/"},
+  {id:22, name:"咖喱鸡腿", cat:"荤菜", img:"https://s.coze.cn/image/EjLcYMuR9kY/"},
+  {id:23, name:"香煎鸡腿", cat:"荤菜", img:"https://s.coze.cn/image/KklY39CTljY/"},
+  {id:24, name:"炸鸡块", cat:"荤菜", img:"https://s.coze.cn/image/VYae2vqUj3w/"},
+  {id:25, name:"卤鸡爪", cat:"荤菜", img:"https://s.coze.cn/image/J06--1gFgMg/"},
+  {id:26, name:"蒜苗炒猪肝", cat:"荤菜", img:"https://s.coze.cn/image/lJfK0U5OduE/"},
+  {id:27, name:"肝腰合炒", cat:"荤菜", img:"https://s.coze.cn/image/1yGyypjeAas/"},
+  {id:28, name:"卤猪蹄", cat:"荤菜", img:"https://s.coze.cn/image/XN9ZlcaVVOM/"},
+  {id:29, name:"莲藕炖棒子骨汤", cat:"荤菜", img:"https://s.coze.cn/image/wsAO1oQWjns/"},
+  {id:30, name:"番茄炒蛋", cat:"荤菜", img:"https://s.coze.cn/image/1B2kbnVY1EY/"},
+  {id:31, name:"黄瓜炒蛋", cat:"荤菜", img:"https://s.coze.cn/image/qF0auSqdF3g/"},
+  {id:32, name:"蒸鸡蛋羹", cat:"荤菜", img:"https://s.coze.cn/image/iVLgy6OJdGM/"},
+  {id:33, name:"香葱炒蛋", cat:"荤菜", img:"https://s.coze.cn/image/zaNv1P4c0Lo/"},
+  {id:34, name:"韭菜豆芽炒鸡蛋", cat:"荤菜", img:"https://s.coze.cn/image/rXkHyU2j88g/"},
+  {id:35, name:"清炒花甲", cat:"荤菜", img:"https://s.coze.cn/image/pUM4C6IW3oE/"},
+  {id:36, name:"清炒基围虾", cat:"荤菜", img:"https://s.coze.cn/image/zBvR5KM-Uzo/"},
+  {id:37, name:"粉丝虾煲", cat:"荤菜", img:"https://s.coze.cn/image/kL_a39KVPfM/"},
+  {id:38, name:"红烧鳝鱼", cat:"荤菜", img:"https://s.coze.cn/image/YRKkTY2l37o/"},
+  {id:39, name:"棒子骨海带汤", cat:"荤菜", img:"https://s.coze.cn/image/Jw4yJe5zEOs/"},
+  {id:40, name:"温鸭子", cat:"荤菜", img:"https://s.coze.cn/image/X6Ut4SY2iKg/"},
+  {id:41, name:"泡椒牛蛙", cat:"荤菜", img:"https://s.coze.cn/image/KcKBynQ6R64/"},
+  {id:42, name:"泡椒墨鱼仔", cat:"荤菜", img:"https://s.coze.cn/image/LYSiZdEr7N4/"},
+  {id:43, name:"清蒸带鱼", cat:"荤菜", img:"https://s.coze.cn/image/JvEJWsYB_Og/"},
+  {id:44, name:"韭黄炒肉丝", cat:"荤菜", img:"https://s.coze.cn/image/38Uj8qr6glI/"},
+  {id:45, name:"竹荪鸡汤", cat:"荤菜", img:"https://s.coze.cn/image/uPDqrzTM39o/"},
+  {id:46, name:"笋子烧牛肉", cat:"荤菜", img:"https://s.coze.cn/image/AZ1xGERsmJU/"},
+  {id:47, name:"雪里红黄花鱼", cat:"荤菜", img:"https://s.coze.cn/image/9FYgHifDD1I/"},
+  {id:48, name:"大蒜烧肚条", cat:"荤菜", img:"https://s.coze.cn/image/2ReW1uHxjp4/"},
+  {id:49, name:"红烧肥肠", cat:"荤菜", img:"https://s.coze.cn/image/E6PU40C5_zc/"},
+  {id:50, name:"杂烩小火锅", cat:"荤菜", img:"https://s.coze.cn/image/2j-Jc3bAOHA/"},
+  // ===== 素菜 =====
+  {id:51, name:"油渣炒莲白", cat:"素菜", img:"https://s.coze.cn/image/eYAJlKSUbsU/"},
+  {id:52, name:"凉拌莴笋丝", cat:"素菜", img:"https://s.coze.cn/image/G3oWuhAHZ_U/"},
+  {id:53, name:"凉拌三丝", cat:"素菜", img:"https://s.coze.cn/image/w9NkvGZ3AEE/"},
+  {id:54, name:"白灼小白菜", cat:"素菜", img:"https://s.coze.cn/image/IuCUucvmUmM/"},
+  {id:55, name:"干锅花菜", cat:"素菜", img:"https://s.coze.cn/image/Me7K8dh0jgU/"},
+  {id:56, name:"白灼西兰花", cat:"素菜", img:"https://s.coze.cn/image/z1S6qy-zml0/"},
+  {id:57, name:"清炒土豆丝", cat:"素菜", img:"https://s.coze.cn/image/Sw471uxdtII/"},
+  {id:58, name:"清炒豆芽", cat:"素菜", img:"https://s.coze.cn/image/_tJeIUswihI/"},
+  {id:59, name:"麻婆豆腐", cat:"素菜", img:"https://s.coze.cn/image/_MevWBDE00c/"},
+  {id:60, name:"红烧煎豆腐", cat:"素菜", img:"https://s.coze.cn/image/RXjSKsQlkL4/"},
+  {id:61, name:"海米烧冬瓜", cat:"素菜", img:"https://s.coze.cn/image/-hhObAt5WYM/"},
+  {id:62, name:"平菇炒青椒", cat:"素菜", img:"https://s.coze.cn/image/Jih9iGwGzlI/"},
+  {id:63, name:"清炒丝瓜", cat:"素菜", img:"https://s.coze.cn/image/M8ZxH_F3-IY/"},
+  {id:64, name:"凉拌蒸茄子", cat:"素菜", img:"https://s.coze.cn/image/yXXpKzthKgE/"},
+  {id:65, name:"清炒藤藤菜", cat:"素菜", img:"https://s.coze.cn/image/Ifw4wu83v9A/"},
+  {id:66, name:"凉拌豆皮", cat:"素菜", img:"https://s.coze.cn/image/ffXV58h9PcM/"},
+  {id:67, name:"红烧素鸡", cat:"素菜", img:"https://s.coze.cn/image/MnS_M-1X_pE/"},
+  {id:68, name:"炒四季豆", cat:"素菜", img:"https://s.coze.cn/image/tdrtWCGCfUc/"},
+  // ===== 汤菜 =====
+  {id:69, name:"榨菜番茄鸡蛋汤", cat:"汤菜", img:"https://s.coze.cn/image/Xu5DvrkTy98/"},
+  {id:70, name:"小白菜肉丸子汤", cat:"汤菜", img:"https://s.coze.cn/image/IsW-Mo-Om2w/"},
+  {id:71, name:"冬瓜肉丸子汤", cat:"汤菜", img:"https://s.coze.cn/image/Edv_adI8-eY/"},
+  {id:72, name:"番茄肉丸子汤", cat:"汤菜", img:"https://s.coze.cn/image/-dq1qMIO3hg/"},
+  {id:73, name:"番茄虾滑汤", cat:"汤菜", img:"https://s.coze.cn/image/Y08qUd8duBg/"},
+  {id:74, name:"莴笋叶子煎蛋汤", cat:"汤菜", img:"https://s.coze.cn/image/uabkxr9fsRI/"},
+  {id:75, name:"紫菜蛋花汤", cat:"汤菜", img:"https://s.coze.cn/image/XznPT2eBKzE/"},
+  {id:76, name:"味增汤", cat:"汤菜", img:"https://s.coze.cn/image/X7ojFT1e4HU/"},
+  {id:77, name:"韩国大酱汤", cat:"汤菜", img:"https://s.coze.cn/image/j1-LTQ3yqLs/"},
+  {id:78, name:"泰国冬阴功汤", cat:"汤菜", img:"https://s.coze.cn/image/ZTy9myWl9GQ/"},
+  {id:79, name:"毛豆汤", cat:"汤菜", img:"https://s.coze.cn/image/lsoNM_gfAJg/"},
+  {id:80, name:"蘑菇汤", cat:"汤菜", img:"https://s.coze.cn/image/d7NKNtXhtk8/"},
+  // ===== 主食 =====
+  {id:81, name:"米饭", cat:"主食", img:"https://s.coze.cn/image/Bz7rVHlQg4o/"},
+  {id:82, name:"饼", cat:"主食", img:"https://s.coze.cn/image/dRcgRiB6wwA/"},
+  {id:83, name:"广式腊肠饭", cat:"主食", img:"https://s.coze.cn/image/rUj5tBGxANo/"},
+  {id:84, name:"厦门萝卜饭", cat:"主食", img:"https://s.coze.cn/image/E7aSacaAHew/"},
+  {id:85, name:"排骨米线", cat:"主食", img:"https://s.coze.cn/image/C_9NFfi_gbc/"},
+  {id:86, name:"乐山卡饼", cat:"主食", img:"https://s.coze.cn/image/Y8NC3qaqNDk/"},
+];
+
+const catIcons = {"荤菜":"🥩","素菜":"🥬","汤菜":"🍲","主食":"🍚"};
+const catOrder = ["荤菜","素菜","汤菜","主食"];
+const selected = new Set();
+
+function render() {
+  const app = document.getElementById('app');
+  let html = '';
+  catOrder.forEach(cat => {
+    const items = dishes.filter(d => d.cat === cat);
+    html += `<div class="category-section" id="cat-${cat}">
+      <div class="category-title"><span class="icon">${catIcons[cat]}</span>${cat}</div>
+      <div class="dish-grid">`;
+    items.forEach(d => {
+      html += `<div class="dish-card${selected.has(d.id)?' selected':''}" data-id="${d.id}" onclick="toggle(${d.id})">
+        <div class="check-badge">✓</div>
+        <div class="img-wrap"><img src="${d.img}" alt="${d.name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22225%22><rect fill=%22%23F5EDE0%22 width=%22300%22 height=%22225%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%238B7355%22 font-size=%2220%22>${encodeURIComponent(d.name)}</text></svg>'"></div>
+        <div class="dish-name">${d.name}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  app.innerHTML = html;
+}
+
+function toggle(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  const card = document.querySelector(`.dish-card[data-id="${id}"]`);
+  if (card) card.classList.toggle('selected', selected.has(id));
+  const count = selected.size;
+  document.getElementById('count').textContent = count;
+  document.getElementById('genBtn').disabled = count === 0;
+  document.getElementById('clearBtn').disabled = count === 0;
+}
+
+function clearAll() {
+  selected.clear();
+  document.querySelectorAll('.dish-card.selected').forEach(c => c.classList.remove('selected'));
+  document.getElementById('count').textContent = 0;
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('clearBtn').disabled = true;
+}
+
+function scrollToCat(cat) {
+  const el = document.getElementById('cat-' + cat);
+  if (!el) return;
+  const navH = document.getElementById('catNav').offsetHeight;
+  const top = el.getBoundingClientRect().top + window.pageYOffset - navH - 8;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+
+// Scroll spy: highlight active category
+function updateActiveNav() {
+  const navH = document.getElementById('catNav').offsetHeight;
+  let activeCat = catOrder[0];
+  catOrder.forEach(cat => {
+    const el = document.getElementById('cat-' + cat);
+    if (el && el.getBoundingClientRect().top <= navH + 20) activeCat = cat;
+  });
+  catOrder.forEach(cat => {
+    const navEl = document.getElementById('nav-' + cat);
+    if (navEl) navEl.classList.toggle('active', cat === activeCat);
+  });
+}
+window.addEventListener('scroll', updateActiveNav, { passive: true });
+window.addEventListener('load', updateActiveNav);
+
+function getSelected() {
+  return dishes.filter(d => selected.has(d.id));
+}
+
+function showModal() {
+  const items = getSelected();
+  const body = document.getElementById('modalBody');
+  if (items.length === 0) {
+    body.innerHTML = '<div class="empty-hint">还没有选菜哦～</div>';
+  } else {
+    // group by category
+    let html = '';
+    let idx = 1;
+    catOrder.forEach(cat => {
+      const catItems = items.filter(d => d.cat === cat);
+      if (catItems.length === 0) return;
+      catItems.forEach(d => {
+        html += `<div class="modal-dish-item">
+          <span class="order">${idx}</span>
+          <img src="${d.img}" alt="${d.name}" onerror="this.style.display='none'">
+          <div class="info"><div class="name">${d.name}</div><div class="cat">${d.cat}</div></div>
+        </div>`;
+        idx++;
+      });
+    });
+    body.innerHTML = html;
+  }
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+async function downloadWord() {
+  const items = getSelected();
+  if (items.length === 0) return;
+
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+
+  // Fetch images as base64
+  async function imgToBase64(url) {
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch(e) { return null; }
+  }
+
+  // Build table rows
+  const rows = [];
+  let idx = 1;
+  for (const d of items) {
+    let imgData = null;
+    try { imgData = await imgToBase64(d.img); } catch(e) {}
+    rows.push({
+      idx: idx++,
+      name: d.name,
+      cat: d.cat,
+      imgBase64: imgData
+    });
+  }
+
+  const { Document, Packer, Paragraph, Table, TableRow, TableCell,
+          TextRun, WidthType, AlignmentType, HeightRule,
+          ImageRun, BorderStyle, HeadingLevel } = docx;
+
+  const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: '8B7355' };
+  const borders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
+
+  // Header row
+  const headerCells = ['序号','菜名','图片','分类','备注'].map(text =>
+    new TableCell({
+      children: [new Paragraph({
+        children: [new TextRun({ text, bold: true, size: 24, font: 'Noto Serif SC' })],
+        alignment: AlignmentType.CENTER
+      })],
+      width: text === '图片' ? { size: 1800, type: WidthType.DXA }
+            : text === '菜名' ? { size: 3000, type: WidthType.DXA }
+            : text === '备注' ? { size: 2400, type: WidthType.DXA }
+            : { size: 800, type: WidthType.DXA },
+      borders,
+      shading: { fill: 'F5EDE0' }
+    })
+  );
+
+  const headerRow = new TableRow({ children: headerCells, tableHeader: true });
+
+  const dataRows = rows.map(r => {
+    const imgCell = r.imgBase64
+      ? new TableCell({
+          children: [new Paragraph({
+            children: [new ImageRun({ data: r.imgBase64.split(',')[1], transformation: { width: 60, height: 45 }, type: 'jpg' })],
+            alignment: AlignmentType.CENTER
+          })],
+          width: { size: 1800, type: WidthType.DXA },
+          borders
+        })
+      : new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: '-', size: 20 })], alignment: AlignmentType.CENTER })],
+          width: { size: 1800, type: WidthType.DXA },
+          borders
+        });
+
+    return new TableRow({
+      children: [
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(r.idx), size: 22, font: 'Noto Serif SC' })], alignment: AlignmentType.CENTER })], width: { size: 800, type: WidthType.DXA }, borders }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.name, size: 22, font: 'Noto Serif SC' })], alignment: AlignmentType.CENTER })], width: { size: 3000, type: WidthType.DXA }, borders }),
+        imgCell,
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: r.cat, size: 22, font: 'Noto Serif SC' })], alignment: AlignmentType.CENTER })], width: { size: 1200, type: WidthType.DXA }, borders }),
+        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '', size: 22 })] })], width: { size: 2400, type: WidthType.DXA }, borders }),
+      ]
+    });
+  });
+
+  const doc = new Document({
+    sections: [{
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text: `${dateStr} 家庭菜单`, bold: true, size: 36, font: 'Noto Serif SC' })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 }
+        }),
+        new Table({
+          rows: [headerRow, ...dataRows],
+          width: { size: 100, type: WidthType.PERCENTAGE }
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: '特殊要求：', size: 24, font: 'Noto Serif SC' })],
+          spacing: { before: 400 }
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: '___________________________________________', size: 24 })],
+          spacing: { after: 200 }
+        }),
+      ]
+    }]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${dateStr} 家庭菜单.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>
